@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 import '../models/task.dart';
 import '../models/subtask.dart';
 import '../services/task_manager.dart';
-import '../services/pomodoro_timer.dart'; // To potentially link timer start
+import '../services/pomodoro_timer.dart';
 import '../models/timer_settings.dart';
-
+import '../screens/full_screen_timer.dart'; // IMPORTAÇÃO ADICIONADA
 
 class TaskListItem extends StatelessWidget {
   final Task task;
@@ -15,8 +15,6 @@ class TaskListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taskManager = Provider.of<TaskManager>(context, listen: false);
-    // Potentially get timer to link start action
-    // final pomodoroTimer = Provider.of<PomodoroTimer>(context, listen: false);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
@@ -33,23 +31,19 @@ class TaskListItem extends StatelessWidget {
             decoration: task.isCompleted ? TextDecoration.lineThrough : null,
           ),
         ),
-        // TODO: Add trailing icons for edit/delete task
         children: task.subtasks.map((subtask) => _buildSubtaskTile(context, task.id, subtask)).toList(),
-        // Optionally add a button within the expanded tile to add a new subtask
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-             IconButton(
-              icon: const Icon(Icons.add_task), // Icon to add subtask
+            IconButton(
+              icon: const Icon(Icons.add_task),
               tooltip: 'Add Subtask',
               onPressed: () {
-                // TODO: Show dialog to add subtask
                 _showAddSubtaskDialog(context, task.id);
               },
             ),
-            // TODO: Add Edit/Delete Task buttons here
           ],
-        )
+        ),
       ),
     );
   }
@@ -79,24 +73,27 @@ class TaskListItem extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.play_circle_outline, size: 20.0),
             tooltip: 'Start Pomodoro for this subtask',
-            onPressed: subtask.isCompleted ? null : () {
-              final taskManager = Provider.of<TaskManager>(context, listen: false);
-              pomodoroTimer.startTimerForSubtask(subtask, taskManager); // Pass TaskManager
+            onPressed: subtask.isCompleted
+                ? null
+                : () {
+              pomodoroTimer.startTimerForSubtask(subtask, taskManager);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FullScreenTimerView()),
+              );
             },
           ),
           IconButton(
             icon: const Icon(Icons.edit, size: 20.0),
             tooltip: 'Edit Subtask',
             onPressed: () {
-              // TODO: Show dialog to edit subtask
-               _showEditSubtaskDialog(context, taskId, subtask);
+              _showEditSubtaskDialog(context, taskId, subtask);
             },
           ),
-           IconButton(
+          IconButton(
             icon: const Icon(Icons.delete_outline, size: 20.0),
             tooltip: 'Delete Subtask',
             onPressed: () {
-              // Optional: Show confirmation dialog
               taskManager.deleteSubtask(taskId, subtask.id);
             },
           ),
@@ -105,11 +102,9 @@ class TaskListItem extends StatelessWidget {
     );
   }
 
-  // --- Dialogs (Placeholders) ---
-
   void _showAddSubtaskDialog(BuildContext context, String taskId) {
     final taskManager = Provider.of<TaskManager>(context, listen: false);
-    final defaultSettings = Provider.of<TimerSettings>(context, listen: false); // Get default settings
+    final defaultSettings = Provider.of<TimerSettings>(context, listen: false);
     final titleController = TextEditingController();
 
     showDialog(
@@ -130,7 +125,7 @@ class TaskListItem extends StatelessWidget {
             child: const Text('Add'),
             onPressed: () {
               if (titleController.text.isNotEmpty) {
-                taskManager.addSubtask(taskId, titleController.text, defaultSettings); // Use default settings for now
+                taskManager.addSubtask(taskId, titleController.text, defaultSettings);
                 Navigator.of(context).pop();
               }
             },
@@ -140,10 +135,9 @@ class TaskListItem extends StatelessWidget {
     );
   }
 
-   void _showEditSubtaskDialog(BuildContext context, String taskId, Subtask subtask) {
+  void _showEditSubtaskDialog(BuildContext context, String taskId, Subtask subtask) {
     final taskManager = Provider.of<TaskManager>(context, listen: false);
     final titleController = TextEditingController(text: subtask.title);
-    // TODO: Add fields to edit timer settings for this subtask
 
     showDialog(
       context: context,
@@ -164,7 +158,6 @@ class TaskListItem extends StatelessWidget {
             onPressed: () {
               if (titleController.text.isNotEmpty) {
                 taskManager.editSubtaskTitle(taskId, subtask.id, titleController.text);
-                // TODO: Save updated timer settings
                 Navigator.of(context).pop();
               }
             },
@@ -173,6 +166,4 @@ class TaskListItem extends StatelessWidget {
       ),
     );
   }
-
 }
-
