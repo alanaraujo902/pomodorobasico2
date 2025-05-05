@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/pomodoro_timer.dart';
 import '../models/timer_state.dart';
+import 'dart:math';
 
 class FullScreenTimerView extends StatelessWidget {
   const FullScreenTimerView({super.key});
@@ -9,104 +10,183 @@ class FullScreenTimerView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FD),
       body: SafeArea(
         child: Consumer<PomodoroTimer>(
-          builder: (context, timer, child) {
-            final formattedTime = "${timer.remainingTime.inMinutes.toString().padLeft(2, '0')}:${(timer.remainingTime.inSeconds % 60).toString().padLeft(2, '0')}";
+          builder: (context, timer, _) {
+            final secondsTotal = timer.isFocusSession
+                ? timer.settings.focusDuration.inSeconds
+                : (timer.currentState == TimerState.runningShortBreak ||
+                timer.currentState == TimerState.pausedShortBreak)
+                ? timer.settings.shortBreakDuration.inSeconds
+                : timer.settings.longBreakDuration.inSeconds;
 
-            return Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    formattedTime,
-                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
+            final secondsLeft = timer.remainingTime.inSeconds;
+            final progress = 1 - (secondsLeft / secondsTotal);
+
+            final minutes = (timer.remainingTime.inMinutes).toString().padLeft(2, '0');
+            final seconds = (timer.remainingTime.inSeconds % 60).toString().padLeft(2, '0');
+
+            return Column(
+              children: [
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 16.0, left: 16.0),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                      tooltip: 'Voltar',
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(_getCurrentStateText(timer.currentState),
-                      style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  if (timer.currentTask != null)
-                    Text("Task: ${timer.currentTask!.title}",
-                        style: Theme.of(context).textTheme.titleMedium),
-                  if (timer.currentSubtask != null)
-                    Text("Subtask: ${timer.currentSubtask!.title}",
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.secondary,
-                        )),
-                  const SizedBox(height: 32),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (timer.currentState == TimerState.runningFocus ||
-                          timer.currentState == TimerState.runningShortBreak ||
-                          timer.currentState == TimerState.runningLongBreak)
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.pause),
-                          label: const Text('Pause'),
-                          onPressed: () => timer.pauseTimer(),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange.shade600,
-                            foregroundColor: Colors.white,
+                ),
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CustomPaint(
+                          painter: _RadialTimerPainter(progress),
+                          child: SizedBox(
+                            width: 260,
+                            height: 260,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: Color(0xFFF2F3F7),
+                                  child: Icon(Icons.microwave_rounded, color: Colors.purple),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  "$minutes:$seconds",
+                                  style: const TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF2C2E43),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  timer.currentSubtask?.title ?? "Time to focus",
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      if (timer.currentState == TimerState.pausedFocus ||
-                          timer.currentState == TimerState.pausedShortBreak ||
-                          timer.currentState == TimerState.pausedLongBreak)
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Resume'),
-                          onPressed: () => timer.startTimer(),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade600,
-                            foregroundColor: Colors.white,
-                          ),
+                        const SizedBox(height: 40),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                if (timer.currentState == TimerState.runningFocus ||
+                                    timer.currentState == TimerState.runningShortBreak ||
+                                    timer.currentState == TimerState.runningLongBreak) {
+                                  timer.pauseTimer();
+                                } else {
+                                  timer.startTimer();
+                                }
+                              },
+                              child: CircleAvatar(
+                                radius: 28,
+                                backgroundColor: Colors.white,
+                                child: Icon(
+                                  (timer.currentState == TimerState.runningFocus ||
+                                      timer.currentState == TimerState.runningShortBreak ||
+                                      timer.currentState == TimerState.runningLongBreak)
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
+                                  color: Colors.purple,
+                                  size: 32,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            GestureDetector(
+                              onTap: () => timer.resetTimer(),
+                              child: CircleAvatar(
+                                radius: 28,
+                                backgroundColor: Colors.purple,
+                                child: const Icon(Icons.stop, color: Colors.white, size: 28),
+                              ),
+                            ),
+                          ],
                         ),
-                      const SizedBox(width: 16),
-                      TextButton.icon(
-                        icon: const Icon(Icons.stop),
-                        label: const Text('Reset'),
-                        onPressed: () => timer.resetTimer(),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.red.shade600,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      TextButton.icon(
-                        icon: const Icon(Icons.close),
-                        label: const Text('Close'),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  )
-                ],
-              ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             );
           },
         ),
       ),
     );
   }
+}
 
-  String _getCurrentStateText(TimerState state) {
-    switch (state) {
-      case TimerState.runningFocus:
-      case TimerState.pausedFocus:
-        return 'Focus';
-      case TimerState.runningShortBreak:
-      case TimerState.pausedShortBreak:
-        return 'Short Break';
-      case TimerState.runningLongBreak:
-      case TimerState.pausedLongBreak:
-        return 'Long Break';
-      case TimerState.initial:
-        return 'Ready to Start';
-      case TimerState.finished:
-        return 'Finished';
+class _RadialTimerPainter extends CustomPainter {
+  final double progress;
+
+  _RadialTimerPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 10;
+    const strokeWidth = 10.0;
+
+    final backgroundPaint = Paint()
+      ..color = Colors.grey.withOpacity(0.1)
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final progressPaint = Paint()
+      ..shader = SweepGradient(
+        colors: [Colors.purple, Colors.pinkAccent],
+        startAngle: 0.0,
+        endAngle: 2 * pi,
+      ).createShader(Rect.fromCircle(center: center, radius: radius))
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    final angle = 2 * pi * progress;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      angle,
+      false,
+      progressPaint,
+    );
+
+    // Tick marks (radial dots)
+    final tickPaint = Paint()
+      ..color = Colors.grey.shade300
+      ..strokeWidth = 2;
+
+    for (int i = 0; i < 60; i++) {
+      final double tickAngle = (2 * pi / 60) * i;
+      final Offset start = Offset(
+        center.dx + (radius - 6) * cos(tickAngle),
+        center.dy + (radius - 6) * sin(tickAngle),
+      );
+      final Offset end = Offset(
+        center.dx + radius * cos(tickAngle),
+        center.dy + radius * sin(tickAngle),
+      );
+      canvas.drawLine(start, end, tickPaint);
     }
   }
+
+  @override
+  bool shouldRepaint(covariant _RadialTimerPainter oldDelegate) => oldDelegate.progress != progress;
 }
