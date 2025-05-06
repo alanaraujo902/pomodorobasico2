@@ -42,20 +42,23 @@ class FullScreenTimerView extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 if (timer.currentSubtask != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    margin: const EdgeInsets.symmetric(horizontal: 24),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      timer.currentSubtask!.title,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.purple,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        timer.currentSubtask!.title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple,
+                        ),
                       ),
                     ),
                   ),
@@ -65,18 +68,20 @@ class FullScreenTimerView extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CustomPaint(
-                          painter: _RadialTimerPainter(progress),
-                          child: SizedBox(
-                            width: 260,
-                            height: 260,
-                            child: Center(
-                              child: Text(
-                                "$minutes:$seconds",
-                                style: const TextStyle(
-                                  fontSize: 36,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2C2E43),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: CustomPaint(
+                              painter: _RadialTimerPainter(progress),
+                              child: Center(
+                                child: Text(
+                                  "$minutes:$seconds",
+                                  style: const TextStyle(
+                                    fontSize: 44,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF2C2E43),
+                                  ),
                                 ),
                               ),
                             ),
@@ -143,49 +148,33 @@ class _RadialTimerPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 10;
-    const strokeWidth = 10.0;
+    const int dotCount = 20;
+    const double dotRadius = 6;
 
+    // Desenha o círculo de fundo
     final backgroundPaint = Paint()
       ..color = Colors.grey.withOpacity(0.1)
-      ..strokeWidth = strokeWidth
+      ..strokeWidth = 10.0
       ..style = PaintingStyle.stroke;
-
-    final progressPaint = Paint()
-      ..shader = SweepGradient(
-        colors: [Colors.purple, Colors.pinkAccent],
-        startAngle: 0.0,
-        endAngle: 2 * pi,
-      ).createShader(Rect.fromCircle(center: center, radius: radius))
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
     canvas.drawCircle(center, radius, backgroundPaint);
 
-    final angle = 2 * pi * progress;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -pi / 2,
-      angle,
-      false,
-      progressPaint,
-    );
+    // Cálculo do número de bolinhas a pintar
+    int dotsToPaint = (progress * dotCount).floor();
+    if (progress == 1.0) {
+      dotsToPaint = dotCount;
+    }
 
-    final tickPaint = Paint()
-      ..color = Colors.grey.shade300
-      ..strokeWidth = 2;
+    // Desenha as bolinhas ao redor
+    for (int i = 0; i < dotCount; i++) {
+      final angle = (-pi / 2) + (2 * pi / dotCount) * i; // começa em cima (12h), sentido horário
+      final dx = center.dx + radius * cos(angle);
+      final dy = center.dy + radius * sin(angle);
 
-    for (int i = 0; i < 60; i++) {
-      final double tickAngle = (2 * pi / 60) * i;
-      final Offset start = Offset(
-        center.dx + (radius - 6) * cos(tickAngle),
-        center.dy + (radius - 6) * sin(tickAngle),
-      );
-      final Offset end = Offset(
-        center.dx + radius * cos(tickAngle),
-        center.dy + radius * sin(tickAngle),
-      );
-      canvas.drawLine(start, end, tickPaint);
+      final isFilled = i < dotsToPaint;
+      final dotPaint = Paint()
+        ..color = isFilled ? Colors.purple : Colors.grey.shade400;
+
+      canvas.drawCircle(Offset(dx, dy), dotRadius, dotPaint);
     }
   }
 
