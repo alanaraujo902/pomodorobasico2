@@ -40,6 +40,26 @@ class FullScreenTimerView extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                if (timer.currentSubtask != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      timer.currentSubtask!.title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
                 Expanded(
                   child: Center(
                     child: Column(
@@ -50,32 +70,15 @@ class FullScreenTimerView extends StatelessWidget {
                           child: SizedBox(
                             width: 260,
                             height: 260,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor: Color(0xFFF2F3F7),
-                                  child: Icon(Icons.microwave_rounded, color: Colors.purple),
+                            child: Center(
+                              child: Text(
+                                "$minutes:$seconds",
+                                style: const TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2C2E43),
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  "$minutes:$seconds",
-                                  style: const TextStyle(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF2C2E43),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  timer.currentSubtask?.title ?? "Time to focus",
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
@@ -168,7 +171,6 @@ class _RadialTimerPainter extends CustomPainter {
       progressPaint,
     );
 
-    // Tick marks (radial dots)
     final tickPaint = Paint()
       ..color = Colors.grey.shade300
       ..strokeWidth = 2;
@@ -188,5 +190,6 @@ class _RadialTimerPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _RadialTimerPainter oldDelegate) => oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _RadialTimerPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
