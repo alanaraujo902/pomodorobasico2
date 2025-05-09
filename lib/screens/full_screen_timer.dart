@@ -27,110 +27,131 @@ class FullScreenTimerView extends StatelessWidget {
             final minutes = (timer.remainingTime.inMinutes).toString().padLeft(2, '0');
             final seconds = (timer.remainingTime.inSeconds % 60).toString().padLeft(2, '0');
 
-            return Column(
-              children: [
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 16.0, left: 16.0),
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                      tooltip: 'Voltar',
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (timer.currentSubtask != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        timer.currentSubtask!.title,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purple,
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth > 600;
+
+                final content = Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 16.0, left: 16.0),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                          tooltip: 'Voltar',
+                          onPressed: () => Navigator.pop(context),
                         ),
                       ),
                     ),
-                  ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: AspectRatio(
-                            aspectRatio: 1,
-                            child: CustomPaint(
-                              painter: _RadialTimerPainter(progress),
-                              child: Center(
-                                child: Text(
-                                  "$minutes:$seconds",
-                                  style: const TextStyle(
-                                    fontSize: 44,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF2C2E43),
-                                  ),
-                                ),
+                    const SizedBox(height: 16),
+                    if (timer.currentSubtask != null)
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 400),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              timer.currentSubtask!.title,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.purple,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 40),
-                        Row(
+                      ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: Center(
+                        child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            GestureDetector(
-                              onTap: () {
-                                if (timer.currentState == TimerState.runningFocus ||
-                                    timer.currentState == TimerState.runningShortBreak ||
-                                    timer.currentState == TimerState.runningLongBreak) {
-                                  timer.pauseTimer();
-                                } else {
-                                  timer.startTimer();
-                                }
-                              },
-                              child: CircleAvatar(
-                                radius: 28,
-                                backgroundColor: Colors.white,
-                                child: Icon(
-                                  (timer.currentState == TimerState.runningFocus ||
-                                      timer.currentState == TimerState.runningShortBreak ||
-                                      timer.currentState == TimerState.runningLongBreak)
-                                      ? Icons.pause
-                                      : Icons.play_arrow,
-                                  color: Colors.purple,
-                                  size: 32,
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: 400, // limite máximo para desktop
+                                maxHeight: 400,
+                              ),
+                              child: AspectRatio(
+                                aspectRatio: 1,
+                                child: CustomPaint(
+                                  painter: _RadialTimerPainter(progress),
+                                  child: Center(
+                                    child: Text(
+                                      "$minutes:$seconds",
+                                      style: const TextStyle(
+                                        fontSize: 44,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF2C2E43),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 24),
-                            GestureDetector(
-                              onTap: () => timer.resetTimer(),
-                              child: CircleAvatar(
-                                radius: 28,
-                                backgroundColor: Colors.purple,
-                                child: const Icon(Icons.stop, color: Colors.white, size: 28),
-                              ),
+                            const SizedBox(height: 40),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    if (timer.currentState == TimerState.runningFocus ||
+                                        timer.currentState == TimerState.runningShortBreak ||
+                                        timer.currentState == TimerState.runningLongBreak) {
+                                      timer.pauseTimer();
+                                    } else {
+                                      timer.startTimer();
+                                    }
+                                  },
+                                  child: CircleAvatar(
+                                    radius: 28,
+                                    backgroundColor: Colors.white,
+                                    child: Icon(
+                                      (timer.currentState == TimerState.runningFocus ||
+                                          timer.currentState == TimerState.runningShortBreak ||
+                                          timer.currentState == TimerState.runningLongBreak)
+                                          ? Icons.pause
+                                          : Icons.play_arrow,
+                                      color: Colors.purple,
+                                      size: 32,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 24),
+                                GestureDetector(
+                                  onTap: () => timer.resetTimer(),
+                                  child: CircleAvatar(
+                                    radius: 28,
+                                    backgroundColor: Colors.purple,
+                                    child: const Icon(Icons.stop, color: Colors.white, size: 28),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
+                  ],
+                );
+
+                // Envolve em SingleChildScrollView para evitar overflow em desktops
+                return isDesktop
+                    ? SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(child: content),
                   ),
-                ),
-              ],
+                )
+                    : content;
+              },
             );
           },
         ),

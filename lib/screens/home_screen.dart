@@ -5,82 +5,90 @@ import 'settings_screen.dart'; // Import settings screen
 import 'package:provider/provider.dart';
 import '../services/task_manager.dart';      // for TaskManager
 import '../models/timer_settings.dart';      // for TimerSettings
+import '../widgets/task_sidebar.dart';
+import '../widgets/task_list_item_view.dart';
+import '../widgets/floating_timer_widget.dart';
 
-class HomeScreen extends StatelessWidget {
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String? selectedTaskId;
+
+  @override
   Widget build(BuildContext context) {
-    // Basic layout: Timer on top, Task list below for desktop-like view
-    // Could use Row for side-by-side on wider screens later
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pomodoro App'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
               );
             },
           ),
-          // TODO: Add navigation to Statistics screen
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          const TimerView(), // Timer display and controls
-          const Divider(),
-          Expanded(
-            child: const TaskList(), // Scrollable task list
+          Row(
+            children: [
+              SizedBox(
+                width: 250,
+                child: TaskSidebar(
+                  selectedTaskId: selectedTaskId,
+                  onTaskSelected: (id) => setState(() => selectedTaskId = id),
+                ),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(
+                child: selectedTaskId == null
+                    ? const Center(child: Text("Selecione uma tarefa à esquerda"))
+                    : TaskListItemView(taskId: selectedTaskId!),
+              ),
+            ],
           ),
+          const FloatingTimerWidget(), // ← Adicionado aqui
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Show dialog to add a new Task
-          _showAddTaskDialog(context);
-        },
+        onPressed: () => _showAddTaskDialog(context),
         tooltip: 'Add Task',
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  // Placeholder for Add Task Dialog (similar to Add Subtask)
   void _showAddTaskDialog(BuildContext context) {
-     final taskManager = Provider.of<TaskManager>(context, listen: false);
-     final titleController = TextEditingController();
+    final taskManager = Provider.of<TaskManager>(context, listen: false);
+    final controller = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add New Task'),
-        content: TextField(
-          controller: titleController,
-          decoration: const InputDecoration(hintText: 'Task title'),
-          autofocus: true,
-        ),
+      builder: (_) => AlertDialog(
+        title: const Text("Add Task"),
+        content: TextField(controller: controller, autofocus: true),
         actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           TextButton(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          TextButton(
-            child: const Text('Add'),
             onPressed: () {
-              if (titleController.text.isNotEmpty) {
-                taskManager.addTask(titleController.text);
-                Navigator.of(context).pop();
+              if (controller.text.isNotEmpty) {
+                taskManager.addTask(controller.text);
+                Navigator.pop(context);
               }
             },
+            child: const Text("Add"),
           ),
         ],
       ),
     );
   }
 }
-

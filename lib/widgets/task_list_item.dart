@@ -5,7 +5,7 @@ import '../models/subtask.dart';
 import '../services/task_manager.dart';
 import '../services/pomodoro_timer.dart';
 import '../models/timer_settings.dart';
-import '../screens/full_screen_timer.dart'; // IMPORTAÇÃO ADICIONADA
+import '../screens/full_screen_timer.dart';
 
 class TaskListItem extends StatelessWidget {
   final Task task;
@@ -15,35 +15,35 @@ class TaskListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taskManager = Provider.of<TaskManager>(context, listen: false);
+    final defaultSettings = Provider.of<TimerSettings>(context, listen: false);
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-      child: ExpansionTile(
-        leading: Checkbox(
-          value: task.isCompleted,
-          onChanged: (bool? value) {
-            taskManager.toggleTaskCompletion(task.id);
-          },
-        ),
-        title: Text(
-          task.title,
-          style: TextStyle(
-            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Botão de adicionar subtarefa
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Adicionar Subtarefa',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: 'Adicionar subtarefa',
+                onPressed: () => _showAddSubtaskDialog(context, task.id),
+              ),
+            ],
           ),
-        ),
-        children: task.subtasks.map((subtask) => _buildSubtaskTile(context, task.id, subtask)).toList(),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.add_task),
-              tooltip: 'Add Subtask',
-              onPressed: () {
-                _showAddSubtaskDialog(context, task.id);
-              },
-            ),
-          ],
-        ),
+          const SizedBox(height: 12),
+          // Lista de subtarefas
+          if (task.subtasks.isEmpty)
+            const Center(child: Text('Nenhuma subtarefa')),
+          ...task.subtasks.map((subtask) => _buildSubtaskTile(context, task.id, subtask)).toList(),
+        ],
       ),
     );
   }
@@ -66,13 +66,15 @@ class TaskListItem extends StatelessWidget {
           decoration: subtask.isCompleted ? TextDecoration.lineThrough : null,
         ),
       ),
-      subtitle: Text('Timer: ${subtask.timerSettings.focusDuration.inMinutes} min | Spent: ${subtask.timeSpent.inMinutes} min'),
+      subtitle: Text(
+        'Timer: ${subtask.timerSettings.focusDuration.inMinutes} min | Spent: ${subtask.timeSpent.inMinutes} min',
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
             icon: const Icon(Icons.play_circle_outline, size: 20.0),
-            tooltip: 'Start Pomodoro for this subtask',
+            tooltip: 'Iniciar Pomodoro para esta subtarefa',
             onPressed: subtask.isCompleted
                 ? null
                 : () {
@@ -85,14 +87,14 @@ class TaskListItem extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.edit, size: 20.0),
-            tooltip: 'Edit Subtask',
+            tooltip: 'Editar Subtarefa',
             onPressed: () {
               _showEditSubtaskDialog(context, taskId, subtask);
             },
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 20.0),
-            tooltip: 'Delete Subtask',
+            tooltip: 'Excluir Subtarefa',
             onPressed: () {
               taskManager.deleteSubtask(taskId, subtask.id);
             },
@@ -110,19 +112,19 @@ class TaskListItem extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add New Subtask'),
+        title: const Text('Nova Subtarefa'),
         content: TextField(
           controller: titleController,
-          decoration: const InputDecoration(hintText: 'Subtask title'),
+          decoration: const InputDecoration(hintText: 'Título da subtarefa'),
           autofocus: true,
         ),
         actions: [
           TextButton(
-            child: const Text('Cancel'),
+            child: const Text('Cancelar'),
             onPressed: () => Navigator.of(context).pop(),
           ),
           TextButton(
-            child: const Text('Add'),
+            child: const Text('Adicionar'),
             onPressed: () {
               if (titleController.text.isNotEmpty) {
                 taskManager.addSubtask(taskId, titleController.text, defaultSettings);
@@ -142,19 +144,19 @@ class TaskListItem extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit Subtask'),
+        title: const Text('Editar Subtarefa'),
         content: TextField(
           controller: titleController,
-          decoration: const InputDecoration(hintText: 'Subtask title'),
+          decoration: const InputDecoration(hintText: 'Título da subtarefa'),
           autofocus: true,
         ),
         actions: [
           TextButton(
-            child: const Text('Cancel'),
+            child: const Text('Cancelar'),
             onPressed: () => Navigator.of(context).pop(),
           ),
           TextButton(
-            child: const Text('Save'),
+            child: const Text('Salvar'),
             onPressed: () {
               if (titleController.text.isNotEmpty) {
                 taskManager.editSubtaskTitle(taskId, subtask.id, titleController.text);
