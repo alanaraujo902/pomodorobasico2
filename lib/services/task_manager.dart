@@ -3,12 +3,15 @@ import 'package:uuid/uuid.dart';
 import '../models/task.dart';
 import '../models/timer_settings.dart';
 import '../models/subtask.dart';
+import '../models/folder.dart';
 
 class TaskManager extends ChangeNotifier {
   final List<Task> _tasks = [];
+  final List<Folder> _folders = [];
   final _uuid = Uuid();
 
   List<Task> get tasks => List.unmodifiable(_tasks);
+  List<Folder> get folders => List.unmodifiable(_folders);
 
   // --- Inicialização Padrão ---
   void loadInitialTasks(List<Task> initialTasks) {
@@ -17,8 +20,7 @@ class TaskManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Task Management ---
-
+  // --- Task Management (soltas) ---
   void addTask(String title) {
     final newTask = Task(
       id: _uuid.v4(),
@@ -29,17 +31,26 @@ class TaskManager extends ChangeNotifier {
   }
 
   void editTaskTitle(String taskId, String newTitle) {
-    try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
-      task.title = newTitle;
-      notifyListeners();
-    } catch (e) {
-      print("Error editing task title: Task with id $taskId not found.");
-    }
+    final task = _tasks.firstWhere((t) => t.id == taskId, orElse: () {
+      for (final folder in _folders) {
+        try {
+          final t = folder.tasks.firstWhere((t) => t.id == taskId);
+          t.title = newTitle;
+          notifyListeners();
+          return t;
+        } catch (_) {}
+      }
+      throw Exception("Task not found");
+    });
+    task.title = newTitle;
+    notifyListeners();
   }
 
   void deleteTask(String taskId) {
     _tasks.removeWhere((t) => t.id == taskId);
+    for (final folder in _folders) {
+      folder.tasks.removeWhere((t) => t.id == taskId);
+    }
     notifyListeners();
   }
 
@@ -47,93 +58,112 @@ class TaskManager extends ChangeNotifier {
     try {
       final task = _tasks.firstWhere((t) => t.id == taskId);
       task.isCompleted = !task.isCompleted;
-      notifyListeners();
-    } catch (e) {
-      print("Error toggling task completion: Task with id $taskId not found.");
+    } catch (_) {
+      for (final folder in _folders) {
+        final task = folder.tasks.firstWhere((t) => t.id == taskId, orElse: () => Task(id: '', title: ''));
+        if (task.id.isNotEmpty) {
+          task.isCompleted = !task.isCompleted;
+          break;
+        }
+      }
     }
+    notifyListeners();
   }
 
   // --- Subtask Management ---
-
   void addSubtask(String taskId, String subtaskTitle, TimerSettings settings) {
-    try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
-      final newSubtask = Subtask(
-        id: _uuid.v4(),
-        title: subtaskTitle,
-        timerSettings: settings,
-      );
-      final updatedSubtasks = List<Subtask>.from(task.subtasks);
-      updatedSubtasks.add(newSubtask);
-      task.subtasks = updatedSubtasks;
-      notifyListeners();
-    } catch (e) {
-      print("Error adding subtask: Task with id $taskId not found.");
-    }
+    final task = _findTask(taskId);
+    final newSubtask = Subtask(
+      id: _uuid.v4(),
+      title: subtaskTitle,
+      timerSettings: settings,
+    );
+    task.subtasks = [...task.subtasks, newSubtask];
+    notifyListeners();
   }
 
   void editSubtaskTitle(String taskId, String subtaskId, String newTitle) {
-    try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
-      final subtask = task.subtasks.firstWhere((st) => st.id == subtaskId);
-      subtask.title = newTitle;
-      notifyListeners();
-    } catch (e) {
-      print("Error editing subtask title: Task $taskId or Subtask $subtaskId not found.");
-    }
+    final subtask = _findSubtask(taskId, subtaskId);
+    subtask.title = newTitle;
+    notifyListeners();
   }
 
   void deleteSubtask(String taskId, String subtaskId) {
-    try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
-      final updatedSubtasks = List<Subtask>.from(task.subtasks);
-      updatedSubtasks.removeWhere((st) => st.id == subtaskId);
-      task.subtasks = updatedSubtasks;
-      notifyListeners();
-    } catch (e) {
-      print("Error deleting subtask: Task $taskId or Subtask $subtaskId not found.");
-    }
+    final task = _findTask(taskId);
+    task.subtasks.removeWhere((st) => st.id == subtaskId);
+    notifyListeners();
   }
 
   void toggleSubtaskCompletion(String taskId, String subtaskId) {
-    try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
-      final subtask = task.subtasks.firstWhere((st) => st.id == subtaskId);
-      subtask.isCompleted = !subtask.isCompleted;
-      _updateParentTaskCompletion(task);
-      notifyListeners();
-    } catch (e) {
-      print("Error toggling subtask completion: Task $taskId or Subtask $subtaskId not found.");
-    }
+    final task = _findTask(taskId);
+    final subtask = task.subtasks.firstWhere((st) => st.id == subtaskId);
+    subtask.isCompleted = !subtask.isCompleted;
+    task.isCompleted = task.subtasks.every((st) => st.isCompleted);
+    notifyListeners();
   }
 
   void updateSubtaskTimerSettings(String taskId, String subtaskId, TimerSettings newSettings) {
-    try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
-      final subtask = task.subtasks.firstWhere((st) => st.id == subtaskId);
-      subtask.timerSettings = newSettings;
-      notifyListeners();
-    } catch (e) {
-      print("Error updating subtask timer settings: Task $taskId or Subtask $subtaskId not found.");
-    }
+    final subtask = _findSubtask(taskId, subtaskId);
+    subtask.timerSettings = newSettings;
+    notifyListeners();
   }
 
   void addTimeToSubtask(String taskId, String subtaskId, Duration timeToAdd) {
-    try {
-      final task = _tasks.firstWhere((t) => t.id == taskId);
-      final subtask = task.subtasks.firstWhere((st) => st.id == subtaskId);
-      subtask.timeSpent += timeToAdd;
-      notifyListeners();
-    } catch (e) {
-      print("Error adding time to subtask: Task $taskId or Subtask $subtaskId not found.");
-    }
+    final subtask = _findSubtask(taskId, subtaskId);
+    subtask.timeSpent += timeToAdd;
+    notifyListeners();
   }
 
-  // --- Helper Methods ---
+  // --- Folder Support ---
+  void addFolder(String name) {
+    _folders.add(Folder(id: _uuid.v4(), name: name, tasks: []));
+    notifyListeners();
+  }
 
-  void _updateParentTaskCompletion(Task task) {
-    if (task.subtasks.isNotEmpty) {
-      task.isCompleted = task.subtasks.every((st) => st.isCompleted);
-    }
+  void addTaskToFolder(String folderId, String title) {
+    final folder = _folders.firstWhere((f) => f.id == folderId);
+    folder.tasks.add(Task(id: _uuid.v4(), title: title));
+    notifyListeners();
+  }
+
+  void moveTaskToFolder(String taskId, String folderId) {
+    final task = _tasks.firstWhere((t) => t.id == taskId);
+    final folder = _folders.firstWhere((f) => f.id == folderId);
+    _tasks.removeWhere((t) => t.id == taskId);
+    folder.tasks.add(task);
+    notifyListeners();
+  }
+
+  void removeTaskFromFolder(String folderId, String taskId) {
+    final folder = _folders.firstWhere((f) => f.id == folderId);
+    final task = folder.tasks.firstWhere((t) => t.id == taskId);
+    folder.tasks.remove(task);
+    _tasks.add(task);
+    notifyListeners();
+  }
+
+  void toggleTaskCompletionInFolder(String folderId, String taskId) {
+    final folder = _folders.firstWhere((f) => f.id == folderId);
+    final task = folder.tasks.firstWhere((t) => t.id == taskId);
+    task.isCompleted = !task.isCompleted;
+    notifyListeners();
+  }
+
+  // --- Helpers ---
+  Task _findTask(String taskId) {
+    final task = _tasks.firstWhere((t) => t.id == taskId, orElse: () {
+      for (final folder in _folders) {
+        try {
+          return folder.tasks.firstWhere((t) => t.id == taskId);
+        } catch (_) {}
+      }
+      throw Exception("Task not found");
+    });
+    return task;
+  }
+
+  Subtask _findSubtask(String taskId, String subtaskId) {
+    final task = _findTask(taskId);
+    return task.subtasks.firstWhere((st) => st.id == subtaskId);
   }
 }

@@ -16,30 +16,64 @@ class TaskListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final taskManager = Provider.of<TaskManager>(context, listen: false);
     final defaultSettings = Provider.of<TimerSettings>(context, listen: false);
+    final titleController = TextEditingController();
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Botão de adicionar subtarefa
           Row(
             children: [
               Expanded(
                 child: Text(
-                  'Adicionar Subtarefa',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  task.title,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.add),
-                tooltip: 'Adicionar subtarefa',
-                onPressed: () => _showAddSubtaskDialog(context, task.id),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'mover') {
+                    _showMoveToFolderDialog(context, task.id);
+                  } else if (value == 'remover') {
+                    final taskManager = Provider.of<TaskManager>(context, listen: false);
+                    for (final folder in taskManager.folders) {
+                      final exists = folder.tasks.any((t) => t.id == task.id);
+                      if (exists) {
+                        taskManager.removeTaskFromFolder(folder.id, task.id);
+                        break;
+                      }
+                    }
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'mover', child: Text('Mover para pasta')),
+                  const PopupMenuItem(value: 'remover', child: Text('Mover para tarefas soltas')),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Lista de subtarefas
+          const SizedBox(height: 16),
+          TextField(
+            controller: titleController,
+            onSubmitted: (text) {
+              if (text.isNotEmpty) {
+                taskManager.addSubtask(task.id, text, defaultSettings);
+                titleController.clear();
+              }
+            },
+            decoration: InputDecoration(
+              hintText: 'Adicionar subtarefa na tarefa "${task.title}"... Pressione Enter para confirmar',
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade100,
+            ),
+          ),
+          const SizedBox(height: 16),
           if (task.subtasks.isEmpty)
             const Center(child: Text('Nenhuma subtarefa')),
           ...task.subtasks.map((subtask) => _buildSubtaskTile(context, task.id, subtask)).toList(),
@@ -104,39 +138,6 @@ class TaskListItem extends StatelessWidget {
     );
   }
 
-  void _showAddSubtaskDialog(BuildContext context, String taskId) {
-    final taskManager = Provider.of<TaskManager>(context, listen: false);
-    final defaultSettings = Provider.of<TimerSettings>(context, listen: false);
-    final titleController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nova Subtarefa'),
-        content: TextField(
-          controller: titleController,
-          decoration: const InputDecoration(hintText: 'Título da subtarefa'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            child: const Text('Cancelar'),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          TextButton(
-            child: const Text('Adicionar'),
-            onPressed: () {
-              if (titleController.text.isNotEmpty) {
-                taskManager.addSubtask(taskId, titleController.text, defaultSettings);
-                Navigator.of(context).pop();
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showEditSubtaskDialog(BuildContext context, String taskId, Subtask subtask) {
     final taskManager = Provider.of<TaskManager>(context, listen: false);
     final titleController = TextEditingController(text: subtask.title);
@@ -165,6 +166,35 @@ class TaskListItem extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  void _showMoveToFolderDialog(BuildContext context, String taskId) {
+    final taskManager = Provider.of<TaskManager>(context, listen: false);
+    final folders = taskManager.folders;
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Mover para pasta"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: folders.length,
+            itemBuilder: (context, index) {
+              final folder = folders[index];
+              return ListTile(
+                title: Text(folder.name),
+                onTap: () {
+                  taskManager.moveTaskToFolder(taskId, folder.id);
+                  Navigator.pop(context);
+                },
+              );
+            },
+          ),
+        ),
       ),
     );
   }
